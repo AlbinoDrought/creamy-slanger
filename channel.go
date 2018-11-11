@@ -105,10 +105,9 @@ func (c *Channel) Subscribe(subscriber *Subscription) {
 
 // Unsubscribe from this channel
 func (c *Channel) Unsubscribe(subscriber *Subscription) {
-	log.Printf("subscribers: %+v", c.Subscribers)
 	if !c.Subscribers[subscriber] {
 		// not subscribed
-		log.Printf("attempted to unsubscribe but not subscribed: %p", subscriber)
+		log.Printf("[channel %v] attempted to unsubscribe but not subscribed: %p", c.Name, subscriber)
 		return
 	}
 

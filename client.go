@@ -15,6 +15,7 @@ type Client struct {
 }
 
 func NewClient() *Client {
+	// TODO: generate socket id
 	client := &Client{
 		toClientChannel: make(chan []byte),
 		SocketID:        "245361.10806245",
@@ -31,6 +32,8 @@ func NewClient() *Client {
 		})
 		client.toClientChannel <- msg
 	}()
+
+	log.Printf("[client %v] connected", client.SocketID)
 
 	return client
 }
@@ -74,6 +77,7 @@ func (c *Client) Subscribe(channel string) error {
 		"channel": channel,
 	})
 	subscription.Receive(msg)
+	log.Printf("[client %v] subscribed to %v", c.SocketID, channel)
 
 	return nil
 }
@@ -86,28 +90,26 @@ func (c *Client) Unsubscribe(channel string) {
 	}
 	delete(c.Subscriptions, channel)
 	subscription.Unsubscribe()
+	log.Printf("[client %v] unsubscribed from %v", c.SocketID, channel)
 }
 
 func (c Client) OnMessageFromClient(message *Message) {
-	// TODO: handle
-	log.Printf("message from client: [%v] %v", message.Event, message.Data)
-
 	if message.Event == SubscribeEvent {
 		subscribeMessage := SubscribeMessage{
 			Channel: message.Data["channel"],
 		}
 
-		log.Printf("subscribing client to channel %v", subscribeMessage.Channel)
 		c.Subscribe(subscribeMessage.Channel)
 	} else if message.Event == UnsubscribeEvent {
 		unsubscribeMessage := UnsubscribeMessage{
 			Channel: message.Data["channel"],
 		}
 
-		log.Printf("unsubscribing client from channel %v", unsubscribeMessage.Channel)
 		c.Unsubscribe(unsubscribeMessage.Channel)
 	} else if message.Event == PingEvent {
 		c.Pong()
+	} else {
+		log.Printf("[client %v] told us %v %+v", c.SocketID, message.Event, message.Data)
 	}
 }
 
@@ -118,6 +120,7 @@ func (c Client) Pong() {
 	})
 
 	c.toClientChannel <- msg
+	log.Printf("[client %v] pong", c.SocketID)
 }
 
 func (c Client) AppKey() string {
