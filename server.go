@@ -3,8 +3,9 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
@@ -23,7 +24,7 @@ func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
-			log.Printf("[server] err on ws upgrade: %+v", err)
+			log.Warnf("[server] err on ws upgrade: %+v", err)
 		}
 		return
 	}
@@ -41,7 +42,7 @@ func reader(ws *websocket.Conn, client *Client) {
 	for {
 		messageType, rawMessage, err := ws.ReadMessage()
 		if err != nil {
-			log.Printf("[client %v] error on read: %+v", client.SocketID, err)
+			log.Debugf("[client %v] error on read: %+v", client.SocketID, err)
 			break
 		}
 		if messageType == websocket.TextMessage {
@@ -49,14 +50,14 @@ func reader(ws *websocket.Conn, client *Client) {
 			err := json.Unmarshal(rawMessage, message)
 
 			if err != nil {
-				log.Printf("[client %v] error on unmarshal: %+v", client.SocketID, err)
+				log.Warnf("[client %v] error on unmarshal: %+v", client.SocketID, err)
 				break
 			}
 
-			log.Printf("[client %v] message received: %+v", client.SocketID, message)
+			log.Debugf("[client %v] message received: %+v", client.SocketID, message)
 			client.OnMessageFromClient(message)
 		} else {
-			log.Printf("[client %v] unhandled message type: %v, %v", messageType, rawMessage)
+			log.Warnf("[client %v] unhandled message type: %v, %v", client.SocketID, messageType, rawMessage)
 		}
 	}
 }
@@ -68,7 +69,7 @@ func writer(ws *websocket.Conn, client *Client) {
 		// log.Printf("forwarding message to client: %v", message)
 		err := ws.WriteMessage(websocket.TextMessage, message)
 		if err != nil {
-			log.Printf("[client %v] error writing: %+v", client.SocketID, err)
+			log.Debugf("[client %v] error writing: %+v", client.SocketID, err)
 			break
 		}
 	}
@@ -88,7 +89,7 @@ func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	json.Unmarshal(body, &event)
 
 	for _, channelName := range event.Channels {
-		log.Printf("[channel %v] publishing %v %+v", channelName, event.Name, event.Data)
+		log.Debugf("[channel %v] publishing %v %+v", channelName, event.Name, event.Data)
 		eventPayload, _ := json.Marshal(map[string]interface{}{
 			"event":   event.Name,
 			"channel": channelName,

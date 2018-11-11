@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"log"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/go-redis/redis"
 )
@@ -97,6 +98,7 @@ func (c Channel) Close() {
 func (c *Channel) Subscribe(subscriber *Subscription) {
 	if c.Subscribers[subscriber] {
 		// already subscribed
+		log.Debugf("[channel %v] attempted to subscribe but already subscribed: %p", c.Name, subscriber)
 		return
 	}
 
@@ -107,7 +109,7 @@ func (c *Channel) Subscribe(subscriber *Subscription) {
 func (c *Channel) Unsubscribe(subscriber *Subscription) {
 	if !c.Subscribers[subscriber] {
 		// not subscribed
-		log.Printf("[channel %v] attempted to unsubscribe but not subscribed: %p", c.Name, subscriber)
+		log.Debugf("[channel %v] attempted to unsubscribe but not subscribed: %p", c.Name, subscriber)
 		return
 	}
 

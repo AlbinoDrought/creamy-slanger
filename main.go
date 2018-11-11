@@ -1,7 +1,10 @@
 package main
 
 import (
+	"os"
+
 	"github.com/go-redis/redis"
+	log "github.com/sirupsen/logrus"
 )
 
 type Options struct {
@@ -30,6 +33,13 @@ func main() {
 			DB:       0,
 		},
 		ActivityTimeout: 30,
+	}
+
+	log.SetOutput(os.Stdout)
+	if options.Debug {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
 	}
 
 	daddy = redis.NewClient(options.RedisOptions)

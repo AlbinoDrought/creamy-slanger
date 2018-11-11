@@ -3,11 +3,12 @@ package main
 import (
 	"crypto/rand"
 	"encoding/json"
-	"log"
 	"math"
 	"math/big"
 	"os"
 	"strconv"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Client struct {
@@ -39,7 +40,7 @@ func NewClient() *Client {
 		client.toClientChannel <- msg
 	}()
 
-	log.Printf("[client %v] connected", client.SocketID)
+	log.Debugf("[client %v] connected", client.SocketID)
 
 	return client
 }
@@ -66,7 +67,7 @@ func (c *Client) Messages() chan []byte {
 func (c *Client) Subscribe(channel string) error {
 	if _, ok := c.Subscriptions[channel]; ok {
 		// already subscribed
-		log.Printf("[client %v] attempted to re-subscribe: %v", c.SocketID, channel)
+		log.Debugf("[client %v] attempted to re-subscribe: %v", c.SocketID, channel)
 		return nil
 	}
 
@@ -91,7 +92,7 @@ func (c *Client) Subscribe(channel string) error {
 		"channel": channel,
 	})
 	subscription.Receive(msg)
-	log.Printf("[client %v] subscribed to %v", c.SocketID, channel)
+	log.Debugf("[client %v] subscribed to %v", c.SocketID, channel)
 
 	return nil
 }
@@ -100,12 +101,12 @@ func (c *Client) Unsubscribe(channel string) {
 	subscription, ok := c.Subscriptions[channel]
 	if !ok {
 		// not subscribed
-		log.Printf("[client %v] attempted to unsubscribe but not subscribed: %v", c.SocketID, channel)
+		log.Debugf("[client %v] attempted to unsubscribe but not subscribed: %v", c.SocketID, channel)
 		return
 	}
 	delete(c.Subscriptions, channel)
 	subscription.Unsubscribe()
-	log.Printf("[client %v] unsubscribed from %v", c.SocketID, channel)
+	log.Debugf("[client %v] unsubscribed from %v", c.SocketID, channel)
 }
 
 func (c Client) OnMessageFromClient(message *Message) {
@@ -116,7 +117,7 @@ func (c Client) OnMessageFromClient(message *Message) {
 
 		err := c.Subscribe(subscribeMessage.Channel)
 		if err != nil {
-			log.Printf("[client %v] error subscribing to %v: %+v", c.SocketID, subscribeMessage.Channel, err)
+			log.Warnf("[client %v] error subscribing to %v: %+v", c.SocketID, subscribeMessage.Channel, err)
 		}
 	} else if message.Event == UnsubscribeEvent {
 		unsubscribeMessage := UnsubscribeMessage{
@@ -127,7 +128,7 @@ func (c Client) OnMessageFromClient(message *Message) {
 	} else if message.Event == PingEvent {
 		c.Pong()
 	} else {
-		log.Printf("[client %v] told us %v %+v", c.SocketID, message.Event, message.Data)
+		log.Debugf("[client %v] told us %v %+v", c.SocketID, message.Event, message.Data)
 	}
 }
 
@@ -138,7 +139,7 @@ func (c Client) Pong() {
 	})
 
 	c.toClientChannel <- msg
-	log.Printf("[client %v] ping -> pong", c.SocketID)
+	log.Debugf("[client %v] ping -> pong", c.SocketID)
 }
 
 func (c Client) AppKey() string {
