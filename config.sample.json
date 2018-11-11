@@ -1,0 +1,16 @@
+{
+  "debug": true,
+  "app": {
+    "key": "foo"
+  },
+  "websocket": {
+    "host": "0.0.0.0",
+    "port": "8080",
+    "timeout": 120
+  },
+  "redis": {
+    "address": "0.0.0.0:6379",
+    "password": "",
+    "database": 0
+  }
+}
