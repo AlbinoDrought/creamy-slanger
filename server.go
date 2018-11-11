@@ -53,7 +53,10 @@ func reader(ws *websocket.Conn, client *Client) {
 				break
 			}
 
+			log.Printf("[client %v] message received: %+v", client.SocketID, message)
 			client.OnMessageFromClient(message)
+		} else {
+			log.Printf("[client %v] unhandled message type: %v, %v", messageType, rawMessage)
 		}
 	}
 }

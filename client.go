@@ -66,6 +66,7 @@ func (c *Client) Messages() chan []byte {
 func (c *Client) Subscribe(channel string) error {
 	if _, ok := c.Subscriptions[channel]; ok {
 		// already subscribed
+		log.Printf("[client %v] attempted to re-subscribe: %v", c.SocketID, channel)
 		return nil
 	}
 
@@ -99,6 +100,7 @@ func (c *Client) Unsubscribe(channel string) {
 	subscription, ok := c.Subscriptions[channel]
 	if !ok {
 		// not subscribed
+		log.Printf("[client %v] attempted to unsubscribe but not subscribed: %v", c.SocketID, channel)
 		return
 	}
 	delete(c.Subscriptions, channel)
@@ -112,7 +114,10 @@ func (c Client) OnMessageFromClient(message *Message) {
 			Channel: message.Data["channel"],
 		}
 
-		c.Subscribe(subscribeMessage.Channel)
+		err := c.Subscribe(subscribeMessage.Channel)
+		if err != nil {
+			log.Printf("[client %v] error subscribing to %v: %+v", c.SocketID, subscribeMessage.Channel, err)
+		}
 	} else if message.Event == UnsubscribeEvent {
 		unsubscribeMessage := UnsubscribeMessage{
 			Channel: message.Data["channel"],
