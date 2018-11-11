@@ -44,5 +44,13 @@ func main() {
 
 	daddy = redis.NewClient(options.RedisOptions)
 
+	// test redis connection
+	pubsub := daddy.Subscribe("creamy-slanger")
+	_, err := pubsub.Receive()
+	if err != nil {
+		log.Panicf("error testing redis connection: %+v", err)
+	}
+	pubsub.Close()
+
 	bootServer()
 }
