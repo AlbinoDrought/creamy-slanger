@@ -1,8 +1,13 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"log"
+	"math"
+	"math/big"
+	"os"
+	"strconv"
 )
 
 type Client struct {
@@ -18,9 +23,10 @@ func NewClient() *Client {
 	// TODO: generate socket id
 	client := &Client{
 		toClientChannel: make(chan []byte),
-		SocketID:        "245361.10806245",
 		Subscriptions:   make(map[string]*Subscription),
 	}
+
+	client.generateSocketID()
 
 	go func() {
 		msg, _ := json.Marshal(map[string]interface{}{
@@ -36,6 +42,13 @@ func NewClient() *Client {
 	log.Printf("[client %v] connected", client.SocketID)
 
 	return client
+}
+
+func (c *Client) generateSocketID() {
+	pid := strconv.Itoa(os.Getpid())
+	r, _ := rand.Int(rand.Reader, big.NewInt(int64(math.Pow(10, 6))))
+
+	c.SocketID = pid + "." + r.String()
 }
 
 func (c *Client) Close() {
@@ -120,7 +133,7 @@ func (c Client) Pong() {
 	})
 
 	c.toClientChannel <- msg
-	log.Printf("[client %v] pong", c.SocketID)
+	log.Printf("[client %v] ping -> pong", c.SocketID)
 }
 
 func (c Client) AppKey() string {
