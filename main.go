@@ -2,6 +2,9 @@ package main
 
 import (
 	"os"
+	"strings"
+
+	"github.com/spf13/viper"
 
 	"github.com/go-redis/redis"
 	log "github.com/sirupsen/logrus"
@@ -22,17 +25,29 @@ var (
 )
 
 func main() {
+	viper.SetDefault("app.key", "foo")
+	viper.SetDefault("websocket.host", "0.0.0.0")
+	viper.SetDefault("websocket.port", "8080")
+	viper.SetDefault("websocket.timeout", 120)
+	viper.SetDefault("debug", false)
+	viper.SetDefault("redis.address", "0.0.0.0:6379")
+	viper.SetDefault("redis.password", "")
+	viper.SetDefault("redis.database", 0)
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetEnvPrefix("CREAMY_SLANGER")
+
 	options = Options{
-		AppKey:        "foo",
-		WebsocketHost: "0.0.0.0",
-		WebsocketPort: "8080",
-		Debug:         true,
+		AppKey:        viper.GetString("app.key"),
+		WebsocketHost: viper.GetString("websocket.host"),
+		WebsocketPort: viper.GetString("websocket.port"),
+		Debug:         viper.GetBool("debug"),
 		RedisOptions: &redis.Options{
-			Addr:     "0.0.0.0:6379",
-			Password: "",
-			DB:       0,
+			Addr:     viper.GetString("redis.address"),
+			Password: viper.GetString("redis.password"),
+			DB:       viper.GetInt("redis.database"),
 		},
-		ActivityTimeout: 30,
+		ActivityTimeout: viper.GetInt("websocket.timeout"),
 	}
 
 	log.SetOutput(os.Stdout)
