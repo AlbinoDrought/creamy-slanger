@@ -36,6 +36,14 @@ func main() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.SetEnvPrefix("CREAMY_SLANGER")
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
+	if err == nil {
+		log.Info("[server] loaded config from file")
+	} else {
+		log.Debug("[server] did not load config from file")
+	}
 
 	options = Options{
 		AppKey:        viper.GetString("app.key"),
@@ -61,7 +69,7 @@ func main() {
 
 	// test redis connection
 	pubsub := daddy.Subscribe("creamy-slanger")
-	_, err := pubsub.Receive()
+	_, err = pubsub.Receive()
 	if err != nil {
 		log.Panicf("error testing redis connection: %+v", err)
 	}
