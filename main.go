@@ -51,6 +51,7 @@ func main() {
 		log.Panicf("error testing redis connection: %+v", err)
 	}
 	pubsub.Close()
+	log.Debug("[server] redis ok")
 
 	bootServer()
 }

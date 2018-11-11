@@ -104,5 +104,7 @@ func bootServer() {
 	router.GET("/app/:appid", serveWs)
 	router.POST("/apps/:appid/events", createEvent)
 
-	log.Fatal(http.ListenAndServe(options.WebsocketHost+":"+options.WebsocketPort, router))
+	addr := options.WebsocketHost + ":" + options.WebsocketPort
+	log.Infof("[server] listening on %v", addr)
+	log.Fatal(http.ListenAndServe(addr, router))
 }
