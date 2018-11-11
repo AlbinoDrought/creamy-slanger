@@ -36,8 +36,8 @@ func NewClient() *Client {
 }
 
 func (c *Client) Close() {
-	for _, subscription := range c.Subscriptions {
-		subscription.Close()
+	for channel := range c.Subscriptions {
+		c.Unsubscribe(channel)
 	}
 }
 
