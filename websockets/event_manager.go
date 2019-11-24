@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/go-redis/redis"
+	log "github.com/sirupsen/logrus"
 )
 
 // A PubEvent is a message that has been published over pubsub
@@ -57,7 +58,11 @@ func (eventManager *redisEventManager) Subscribe(appID, channel string) Subscrip
 			case message := <-redisChannel:
 				pubEvent := PubEvent{}
 				if err := json.Unmarshal([]byte(message.Payload), &pubEvent); err != nil {
-					// todo: log
+					log.WithFields(log.Fields{
+						"appID":   appID,
+						"channel": channel,
+						"error":   err,
+					}).Debug("unmarshal failed")
 					continue
 				}
 

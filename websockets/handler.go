@@ -54,7 +54,7 @@ func (h *websocketHandler) generateSocketID(con Connection) {
 }
 
 func (h *websocketHandler) establishConnection(con Connection) {
-	log.Debugf("[client %v] connected", con.SocketID())
+	log.WithField("client", con.SocketID()).Debug("connected")
 
 	con.Send(map[string]interface{}{
 		"event": "pusher:connection_established",
@@ -99,6 +99,7 @@ func (h *websocketHandler) OnMessage(con Connection, payload ClientMessagePayloa
 
 func (h *websocketHandler) OnClose(con Connection) {
 	h.channelManager.RemoveFromAllChannels(con)
+	log.WithField("client", con.SocketID()).Debug("disconnected")
 
 	// todo: implement
 	// track disconnect

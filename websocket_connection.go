@@ -42,7 +42,10 @@ func (con *websocketConnection) Send(message websockets.MessagePayload) {
 	con.messageLock.Lock()
 	defer con.messageLock.Unlock()
 
-	log.Debugf("[client %v] message sent: %+v", con.SocketID(), message)
+	log.WithFields(log.Fields{
+		"client": con.SocketID(),
+		"msg":    message,
+	}).Debug("outbound")
 	con.ws.WriteJSON(message)
 }
 

@@ -79,7 +79,10 @@ func (m *ChannelProtocolMessage) Respond() error {
 	case "unsubscribe":
 		return m.unsubscribe()
 	default:
-		log.Debugf("[client %v] unhandled protocol message: %v", m.con.SocketID(), eventName)
+		log.WithFields(log.Fields{
+			"client": m.con.SocketID(),
+			"event":  eventName,
+		}).Debug("unhandled protocol message")
 	}
 
 	return nil
