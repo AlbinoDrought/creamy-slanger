@@ -38,14 +38,6 @@ func (cmp ClientMessagePayload) MessagePayload() MessagePayload {
 	return MessagePayload(cmp)
 }
 
-type App interface {
-	ID() string
-	Secret() string
-	CapacityEnabled() bool
-	Capacity() int
-	ClientMessagesEnabled() bool
-}
-
 type Connection interface {
 	App() App
 	SetApp(app App)

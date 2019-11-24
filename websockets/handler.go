@@ -20,7 +20,7 @@ type websocketHandler struct {
 func (h *websocketHandler) verifyAppKey(con Connection) error {
 	// todo: implement
 	// get AppKey from query
-	appKey := ""
+	appKey := "pancakes"
 
 	app := h.appManager.FindByKey(appKey)
 	if app == nil {
