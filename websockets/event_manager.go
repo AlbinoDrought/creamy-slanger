@@ -40,7 +40,7 @@ type redisEventManager struct {
 }
 
 func (eventManager *redisEventManager) pubsubKey(appID, channel string) string {
-	return appID + "\x00" + channel
+	return appID + "_" + channel
 }
 
 func (eventManager *redisEventManager) Publish(appID, channel string, payload PubEvent) error {
