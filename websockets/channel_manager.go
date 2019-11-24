@@ -35,6 +35,9 @@ func (cm *channelMap) Clean() bool {
 	if len(emptyChannels) > 0 {
 		cm.lock.Lock()
 		for _, emptyChannelName := range emptyChannels {
+			if channel, ok := cm.channels[emptyChannelName]; ok {
+				channel.Close()
+			}
 			delete(cm.channels, emptyChannelName)
 		}
 		canBeCollected = len(cm.channels) == 0
@@ -47,6 +50,7 @@ func (cm *channelMap) Clean() bool {
 type arrayChannelManager struct {
 	lock            sync.RWMutex
 	channelsByAppID map[string]channelMap
+	eventManager    EventManager
 }
 
 func (channelManager *arrayChannelManager) FindOrCreate(appID, channelName string) Channel {
@@ -83,15 +87,11 @@ func (channelManager *arrayChannelManager) FindOrCreate(appID, channelName strin
 		if !ok {
 			// actually create channel
 			if strings.HasPrefix(channelName, "private-") {
-				channel = &PrivateChannel{
-					&PublicChannel{name: channelName},
-				}
+				channel = NewPrivateChannel(appID, channelName, channelManager.eventManager)
 			} else if strings.HasPrefix(channelName, "presence-") {
-				channel = &PresenceChannel{
-					&PublicChannel{name: channelName},
-				}
+				channel = NewPresenceChannel(appID, channelName, channelManager.eventManager)
 			} else {
-				channel = &PublicChannel{name: channelName}
+				channel = NewPublicChannel(appID, channelName, channelManager.eventManager)
 			}
 
 			channels.channels[channelName] = channel
@@ -163,9 +163,10 @@ func (channelManager *arrayChannelManager) RemoveFromAllChannels(con Connection)
 }
 
 // NewArrayChannelManager returns a new in-memory channel manager
-func NewArrayChannelManager() ChannelManager {
+func NewArrayChannelManager(eventManager EventManager) ChannelManager {
 	return &arrayChannelManager{
 		lock:            sync.RWMutex{},
 		channelsByAppID: map[string]channelMap{},
+		eventManager:    eventManager,
 	}
 }
