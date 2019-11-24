@@ -10,5 +10,5 @@ func StrAfter(haystack string, needle string) string {
 		return ""
 	}
 
-	return haystack[index:]
+	return haystack[index+1:]
 }
