@@ -49,7 +49,7 @@ func (cm *channelMap) Clean() bool {
 
 type arrayChannelManager struct {
 	lock            sync.RWMutex
-	channelsByAppID map[string]channelMap
+	channelsByAppID map[string]*channelMap
 	eventManager    EventManager
 }
 
@@ -64,7 +64,7 @@ func (channelManager *arrayChannelManager) FindOrCreate(appID, channelName strin
 		// re-check in attempt to avoid race cond
 		channels, ok = channelManager.channelsByAppID[appID]
 		if !ok {
-			channels = channelMap{
+			channels = &channelMap{
 				lock:     sync.RWMutex{},
 				channels: map[string]Channel{},
 			}
@@ -167,7 +167,7 @@ func (channelManager *arrayChannelManager) RemoveFromAllChannels(con Connection)
 func NewArrayChannelManager(eventManager EventManager) ChannelManager {
 	return &arrayChannelManager{
 		lock:            sync.RWMutex{},
-		channelsByAppID: map[string]channelMap{},
+		channelsByAppID: map[string]*channelMap{},
 		eventManager:    eventManager,
 	}
 }
