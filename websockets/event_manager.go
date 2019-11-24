@@ -68,7 +68,7 @@ func (eventManager *redisEventManager) Subscribe(appID, channel string) Subscrip
 
 				pubEvent := PubEvent{}
 				if err := json.Unmarshal([]byte(message.Payload), &pubEvent); err != nil {
-					log.WithField("error", err).Debug("redis message unmarshal failed")
+					logger.WithField("error", err).Debug("redis message unmarshal failed")
 					continue
 				}
 
