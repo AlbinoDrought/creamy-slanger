@@ -63,6 +63,7 @@ func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
 			log.Debugf("[client %v] message received: %+v", con.SocketID(), message)
 			if err = slangerOptions.Handler.OnMessage(con, message); err != nil {
+				log.Debugf("[client %v] message error: %v", con.SocketID(), err.Error())
 				slangerOptions.Handler.OnError(con, err)
 			}
 		} else {
