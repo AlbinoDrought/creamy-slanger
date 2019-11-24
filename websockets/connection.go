@@ -1,11 +1,7 @@
 package websockets
 
-type MessagePayload map[string]interface{}
-
-type ClientMessagePayload MessagePayload
-
-func (cmp ClientMessagePayload) valueOrEmpty(key string) string {
-	value, ok := cmp[key]
+func valueOrEmpty(values map[string]interface{}, key string) string {
+	value, ok := values[key]
 	if !ok {
 		return ""
 	}
@@ -18,12 +14,34 @@ func (cmp ClientMessagePayload) valueOrEmpty(key string) string {
 	return str
 }
 
+type MessagePayload map[string]interface{}
+
+type ClientMessagePayload MessagePayload
+
+func (cmp ClientMessagePayload) valueOrEmpty(key string) string {
+	return valueOrEmpty(cmp, key)
+}
+
+func (cmp ClientMessagePayload) Data() map[string]interface{} {
+	data, ok := cmp["data"]
+	if !ok {
+		return map[string]interface{}{}
+	}
+
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return map[string]interface{}{}
+	}
+
+	return dataMap
+}
+
 func (cmp ClientMessagePayload) Event() string {
 	return cmp.valueOrEmpty("event")
 }
 
 func (cmp ClientMessagePayload) Channel() string {
-	return cmp.valueOrEmpty("channel")
+	return valueOrEmpty(cmp.Data(), "channel")
 }
 
 func (cmp ClientMessagePayload) ChannelData() string {
