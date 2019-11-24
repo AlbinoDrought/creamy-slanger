@@ -32,7 +32,7 @@ var (
 )
 
 func init() {
-	viper.SetDefault("app.id", "6969")
+	viper.SetDefault("app.id", "42")
 	viper.SetDefault("app.key", "foo")
 	viper.SetDefault("app.secret", "bar")
 	viper.SetDefault("app.capacity.enabled", false)

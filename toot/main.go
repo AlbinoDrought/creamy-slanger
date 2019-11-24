@@ -8,7 +8,7 @@ import (
 
 func main() {
 	client := pusher.Client{
-		AppID:   "6969",
+		AppID:   "42",
 		Host:    "localhost:8080",
 		Key:     "somekey",
 		Secret:  "somesecret",
