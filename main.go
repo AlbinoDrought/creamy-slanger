@@ -40,9 +40,10 @@ func main() {
 	viper.SetDefault("app.capacity.enabled", false)
 	viper.SetDefault("app.capacity.max", 0)
 	viper.SetDefault("app.clientmessages.enabled", false)
+	viper.SetDefault("app.activitytimeout", 120)
 	viper.SetDefault("websocket.host", "0.0.0.0")
 	viper.SetDefault("websocket.port", "8080")
-	viper.SetDefault("websocket.timeout", 120)
+	viper.SetDefault("websocket.timeout", 120) // todo: remove, replaced by app.activitytimeout
 	viper.SetDefault("debug", false)
 	viper.SetDefault("redis.address", "0.0.0.0:6379")
 	viper.SetDefault("redis.password", "")
@@ -82,6 +83,7 @@ func main() {
 				AppCapacityEnabled:       viper.GetBool("app.capacity.enabled"),
 				AppCapacity:              viper.GetInt("app.capacity.max"),
 				AppClientMessagesEnabled: viper.GetBool("app.clientmessages.enabled"),
+				AppActivityTimeout:       viper.GetInt("app.activitytimeout"),
 			},
 		}),
 		EventManager: websockets.NewRedisEventManager(daddy),

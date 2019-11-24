@@ -61,7 +61,7 @@ func (h *websocketHandler) establishConnection(con Connection) {
 		"event": "pusher:connection_established",
 		"data": map[string]interface{}{
 			"socket_id":        con.SocketID(),
-			"activity_timeout": 30,
+			"activity_timeout": con.App().ActivityTimeout(),
 		},
 	})
 

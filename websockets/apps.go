@@ -7,6 +7,7 @@ type App interface {
 	CapacityEnabled() bool
 	Capacity() int
 	ClientMessagesEnabled() bool
+	ActivityTimeout() int
 }
 
 type StaticApp struct {
@@ -16,6 +17,7 @@ type StaticApp struct {
 	AppCapacityEnabled       bool
 	AppCapacity              int
 	AppClientMessagesEnabled bool
+	AppActivityTimeout       int
 }
 
 func (a *StaticApp) ID() string {
@@ -40,4 +42,8 @@ func (a *StaticApp) Capacity() int {
 
 func (a *StaticApp) ClientMessagesEnabled() bool {
 	return a.AppClientMessagesEnabled
+}
+
+func (a *StaticApp) ActivityTimeout() int {
+	return a.AppActivityTimeout
 }
