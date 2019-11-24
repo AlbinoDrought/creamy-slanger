@@ -28,6 +28,11 @@ type EventManager interface {
 	AddTrackedChannelSubscriber(appID, channel, subscriberID string) error
 	RemoveTrackedChannelSubscriber(appID, channel, subscriberID string) error
 	GetTrackedChannelSubscriberCount(appID, channel string) (int64, error)
+
+	AddTrackedChannelUser(appID, channel, subscriberID, userData string) error
+	RemoveTrackedChannelUser(appID, channel, subscriberID string) error
+	GetTrackedChannelUsers(appID, channel string) ([]string, error)
+	GetTrackedChannelUserCount(appID, channel string) (int64, error)
 }
 
 type redisEventManager struct {
@@ -102,6 +107,26 @@ func (eventManager *redisEventManager) RemoveTrackedChannelSubscriber(appID, cha
 
 func (eventManager *redisEventManager) GetTrackedChannelSubscriberCount(appID, channel string) (int64, error) {
 	return eventManager.client.SCard(eventManager.trackedChannelSubscriberKey(appID, channel)).Result()
+}
+
+func (eventManager *redisEventManager) trackedChannelUserKey(appID, channel string) string {
+	return "subs:" + eventManager.pubsubKey(appID, channel)
+}
+
+func (eventManager *redisEventManager) AddTrackedChannelUser(appID, channel, subscriberID, userData string) error {
+	return eventManager.client.HSet(eventManager.trackedChannelUserKey(appID, channel), subscriberID, userData).Err()
+}
+
+func (eventManager *redisEventManager) RemoveTrackedChannelUser(appID, channel, subscriberID string) error {
+	return eventManager.client.HDel(eventManager.trackedChannelUserKey(appID, channel), subscriberID).Err()
+}
+
+func (eventManager *redisEventManager) GetTrackedChannelUsers(appID, channel string) ([]string, error) {
+	return eventManager.client.HVals(eventManager.trackedChannelUserKey(appID, channel)).Result()
+}
+
+func (eventManager *redisEventManager) GetTrackedChannelUserCount(appID, channel string) (int64, error) {
+	return eventManager.client.HLen(eventManager.trackedChannelUserKey(appID, channel)).Result()
 }
 
 type redisSubscription struct {

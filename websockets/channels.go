@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"sync"
 
 	"github.com/AlbinoDrought/creamy-slanger/websockets/support"
@@ -244,16 +245,61 @@ func NewPublicChannel(appID, name string, eventManager EventManager) Channel {
 // users connected to it.
 type presenceChannel struct {
 	*publicChannel
+
+	localUserData map[string]string
 }
 
 func (c *presenceChannel) getChannelDataAsString() string {
-	// todo: implement
-	return ""
+	users, err := c.eventManager.GetTrackedChannelUsers(c.appID, c.name)
+	if err != nil {
+		// todo: log or handle
+		return ""
+	}
+
+	userHash := make(map[interface{}]interface{}, len(users))
+	userIDs := make([]interface{}, len(users))
+
+	for i, userData := range users {
+		decoded := map[string]interface{}{}
+		err := json.Unmarshal([]byte(userData), &decoded)
+		if err != nil {
+			// todo: log or handle
+			continue
+		}
+
+		userID, hasID := decoded["user_id"]
+		userInfo, hasUserInfo := decoded["user_info"]
+
+		if !hasID || !hasUserInfo {
+			// todo: log or handle
+			continue
+		}
+
+		userHash[userID] = userInfo
+		userIDs[i] = userID
+	}
+
+	channelData := map[string]interface{}{
+		"presence": map[string]interface{}{
+			"ids":   userIDs,
+			"hash":  userHash,
+			"count": c.getUserCount(),
+		},
+	}
+	channelDataAsBytes, err := json.Marshal(channelData)
+	if err != nil {
+		// todo: log or handle
+		return ""
+	}
+	return string(channelDataAsBytes)
 }
 
-func (c *presenceChannel) getUserCount() int {
-	// todo: implement
-	return 0
+func (c *presenceChannel) getUserCount() int64 {
+	count, err := c.eventManager.GetTrackedChannelUserCount(c.appID, c.name)
+	if err != nil {
+		// todo: log or handle
+	}
+	return count
 }
 
 // Subscribe a connection to this channel
@@ -264,9 +310,11 @@ func (c *presenceChannel) Subscribe(con Connection, payload ClientMessagePayload
 
 	c.saveConnection(con)
 
-	// todo: implement
-
-	// save payload->channel_data as user data
+	userData := payload.ChannelData()
+	c.lock.Lock()
+	c.localUserData[con.SocketID()] = userData
+	c.eventManager.AddTrackedChannelUser(c.appID, c.name, con.SocketID(), userData)
+	c.lock.Unlock()
 
 	channelData := c.getChannelDataAsString()
 
@@ -279,7 +327,7 @@ func (c *presenceChannel) Subscribe(con Connection, payload ClientMessagePayload
 	c.BroadcastToOthers(con, map[string]interface{}{
 		"event":   "pusher_internal:member_added",
 		"channel": c.name,
-		"data":    channelData,
+		"data":    userData,
 	})
 
 	return nil
@@ -289,17 +337,25 @@ func (c *presenceChannel) Subscribe(con Connection, payload ClientMessagePayload
 func (c *presenceChannel) Unsubscribe(con Connection) {
 	c.publicChannel.Unsubscribe(con)
 
-	// todo: implement
+	c.lock.RLock()
+	userData, ok := c.localUserData[con.SocketID()]
+	c.lock.RUnlock()
 
-	// jump out if user already unsubbed
+	if !ok {
+		// already unsubbed
+		return
+	}
 
 	c.BroadcastToOthers(con, map[string]interface{}{
 		"event":   "pusher_internal:member_removed",
 		"channel": c.name,
-		"data":    "", // todo: implement
+		"data":    userData, // stray: uses entire userData instead of just user_id
 	})
 
-	// remove user from list of users
+	c.lock.Lock()
+	delete(c.localUserData, con.SocketID())
+	c.eventManager.RemoveTrackedChannelUser(c.appID, c.name, con.SocketID())
+	c.lock.Unlock()
 }
 
 // ToArray transmogrifies this channel to a serializable array
