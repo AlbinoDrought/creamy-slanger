@@ -48,6 +48,11 @@ func (eventManager *redisEventManager) Subscribe(appID, channel string) Subscrip
 	ctx, cancel := context.WithCancel(context.Background())
 	messageChannel := make(chan PubEvent)
 	go func() {
+		logger := log.WithFields(log.Fields{
+			"appID":   appID,
+			"channel": channel,
+		})
+
 		redisChannel := subscription.Channel()
 		defer close(messageChannel)
 
@@ -56,13 +61,14 @@ func (eventManager *redisEventManager) Subscribe(appID, channel string) Subscrip
 			case <-ctx.Done():
 				return
 			case message := <-redisChannel:
+				if message == nil {
+					logger.Debug("nil message received")
+					continue
+				}
+
 				pubEvent := PubEvent{}
 				if err := json.Unmarshal([]byte(message.Payload), &pubEvent); err != nil {
-					log.WithFields(log.Fields{
-						"appID":   appID,
-						"channel": channel,
-						"error":   err,
-					}).Debug("unmarshal failed")
+					log.WithField("error", err).Debug("redis message unmarshal failed")
 					continue
 				}
 
