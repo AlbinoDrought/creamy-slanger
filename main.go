@@ -19,12 +19,10 @@ type SlangerOptions struct {
 }
 
 type Options struct {
-	AppKey          string
-	WebsocketHost   string
-	WebsocketPort   string
-	Debug           bool
-	RedisOptions    *redis.Options
-	ActivityTimeout int
+	WebsocketHost string
+	WebsocketPort string
+	Debug         bool
+	RedisOptions  *redis.Options
 }
 
 var (
@@ -43,7 +41,6 @@ func main() {
 	viper.SetDefault("app.activitytimeout", 120)
 	viper.SetDefault("websocket.host", "0.0.0.0")
 	viper.SetDefault("websocket.port", "8080")
-	viper.SetDefault("websocket.timeout", 120) // todo: remove, replaced by app.activitytimeout
 	viper.SetDefault("debug", false)
 	viper.SetDefault("redis.address", "0.0.0.0:6379")
 	viper.SetDefault("redis.password", "")
@@ -61,7 +58,6 @@ func main() {
 	}
 
 	options = Options{
-		AppKey:        viper.GetString("app.key"),
 		WebsocketHost: viper.GetString("websocket.host"),
 		WebsocketPort: viper.GetString("websocket.port"),
 		Debug:         viper.GetBool("debug"),
@@ -70,7 +66,6 @@ func main() {
 			Password: viper.GetString("redis.password"),
 			DB:       viper.GetInt("redis.database"),
 		},
-		ActivityTimeout: viper.GetInt("websocket.timeout"),
 	}
 
 	daddy = redis.NewClient(options.RedisOptions)
