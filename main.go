@@ -34,7 +34,12 @@ var (
 )
 
 func main() {
+	viper.SetDefault("app.id", "6969")
 	viper.SetDefault("app.key", "foo")
+	viper.SetDefault("app.secret", "bar")
+	viper.SetDefault("app.capacity.enabled", false)
+	viper.SetDefault("app.capacity.max", 0)
+	viper.SetDefault("app.clientmessages.enabled", false)
 	viper.SetDefault("websocket.host", "0.0.0.0")
 	viper.SetDefault("websocket.port", "8080")
 	viper.SetDefault("websocket.timeout", 120)
@@ -71,12 +76,12 @@ func main() {
 	slangerOptions = SlangerOptions{
 		AppManager: websockets.NewArrayAppManager([]websockets.App{
 			&websockets.StaticApp{
-				AppID:                    "6969",
-				AppKey:                   "somekey",
-				AppSecret:                "somesecret",
-				AppCapacityEnabled:       false,
-				AppCapacity:              0,
-				AppClientMessagesEnabled: false,
+				AppID:                    viper.GetString("app.id"),
+				AppKey:                   viper.GetString("app.key"),
+				AppSecret:                viper.GetString("app.secret"),
+				AppCapacityEnabled:       viper.GetBool("app.capacity.enabled"),
+				AppCapacity:              viper.GetInt("app.capacity.max"),
+				AppClientMessagesEnabled: viper.GetBool("app.clientmessages.enabled"),
 			},
 		}),
 		EventManager: websockets.NewRedisEventManager(daddy),
