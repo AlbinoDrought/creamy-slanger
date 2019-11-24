@@ -86,7 +86,7 @@ func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 type IncomingEvent struct {
 	Name     string
 	Channels []string
-	Data     interface{}
+	Data     string
 }
 
 func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -110,13 +110,11 @@ func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		}).Debug("createEvent json unmarshal failure")
 	}
 
-	if dataBytes, ok := event.Data.([]byte); ok {
-		if err := json.Unmarshal(dataBytes, messagePayload); err != nil {
-			log.WithFields(log.Fields{
-				"appID": appID,
-				"error": err,
-			}).Debug("createEvent dataBytes json unmarshal failure")
-		}
+	if err := json.Unmarshal([]byte(event.Data), &messagePayload); err != nil {
+		log.WithFields(log.Fields{
+			"appID": appID,
+			"error": err,
+		}).Debug("createEvent dataBytes json unmarshal failure")
 	}
 
 	for _, channelName := range event.Channels {
@@ -124,7 +122,7 @@ func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			"appID":   appID,
 			"channel": channelName,
 			"event":   event.Name,
-			"message": event.Data,
+			"message": messagePayload,
 		}).Debugf("publishing")
 
 		slangerOptions.EventManager.Publish(
