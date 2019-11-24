@@ -1,9 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/AlbinoDrought/creamy-slanger/websockets"
 	log "github.com/sirupsen/logrus"
@@ -20,6 +26,11 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var (
+	websocketWaitGroup sync.WaitGroup
+	websocketContext   context.Context
+)
+
 func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	appKey := p.ByName("appkey")
 	logger := log.WithField("appKey", appKey)
@@ -34,6 +45,20 @@ func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	}
 	ws.SetReadLimit(512)
 	defer ws.Close()
+
+	websocketWaitGroup.Add(1)
+	defer websocketWaitGroup.Done()
+
+	requestContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		select {
+		case <-websocketContext.Done():
+			ws.Close()
+			return
+		case <-requestContext.Done():
+		}
+	}()
 
 	con := newWebsocketConnection(ws, appKey)
 	defer slangerOptions.Handler.OnClose(con)
@@ -133,11 +158,44 @@ func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func bootServer() {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	wsContext, wsCancel := context.WithCancel(context.Background())
+	websocketContext = wsContext
+
 	router := httprouter.New()
 	router.GET("/app/:appkey", serveWs)
 	router.POST("/apps/:appid/events", createEvent)
 
-	addr := options.WebsocketHost + ":" + options.WebsocketPort
-	log.WithField("address", addr).Info("listening")
-	log.Fatal(http.ListenAndServe(addr, router))
+	server := &http.Server{Addr: options.WebsocketHost + ":" + options.WebsocketPort, Handler: router}
+
+	go func() {
+		log.WithField("address", server.Addr).Info("listening")
+		if err := server.ListenAndServe(); err != nil {
+			log.Warn(err)
+		}
+	}()
+
+	<-stop
+	shutdownContext, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
+	server.Shutdown(shutdownContext)
+	wsCancel()
+
+	wsDrain := make(chan struct{}, 1)
+	go func() {
+		websocketWaitGroup.Wait()
+		wsDrain <- struct{}{}
+	}()
+
+	log.Info("draining server")
+	select {
+	case <-shutdownContext.Done():
+		log.Fatal("drain timeout")
+	case <-stop:
+		log.Fatal("drain aborted")
+	case <-wsDrain:
+		log.Info("drain complete")
+	}
 }
