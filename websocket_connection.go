@@ -5,6 +5,7 @@ import (
 
 	"github.com/AlbinoDrought/creamy-slanger/websockets"
 	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 )
 
 type websocketConnection struct {
@@ -41,6 +42,7 @@ func (con *websocketConnection) Send(message websockets.MessagePayload) {
 	con.messageLock.Lock()
 	defer con.messageLock.Unlock()
 
+	log.Debugf("[client %v] message sent: %+v", con.SocketID(), message)
 	con.ws.WriteJSON(message)
 }
 
