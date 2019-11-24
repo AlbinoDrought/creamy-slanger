@@ -31,7 +31,7 @@ var (
 	daddy          *redis.Client
 )
 
-func main() {
+func init() {
 	viper.SetDefault("app.id", "6969")
 	viper.SetDefault("app.key", "foo")
 	viper.SetDefault("app.secret", "bar")
@@ -50,6 +50,9 @@ func main() {
 	viper.SetEnvPrefix("CREAMY_SLANGER")
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
+}
+
+func main() {
 	err := viper.ReadInConfig()
 	if err == nil {
 		log.Info("[server] loaded config from file")
