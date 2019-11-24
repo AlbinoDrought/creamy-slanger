@@ -3,6 +3,8 @@ package websockets
 import (
 	"fmt"
 	"math/rand"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Handler interface {
@@ -52,6 +54,8 @@ func (h *websocketHandler) generateSocketID(con Connection) {
 }
 
 func (h *websocketHandler) establishConnection(con Connection) {
+	log.Debugf("[client %v] connected", con.SocketID())
+
 	con.Send(map[string]interface{}{
 		"event": "pusher:connection_established",
 		"data": map[string]interface{}{
