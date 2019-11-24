@@ -85,6 +85,10 @@ func (c *publicChannel) Close() {
 		c.cancel()
 		c.cancel = nil
 	}
+
+	for socketID := range c.localConnections {
+		c.eventManager.RemoveTrackedChannelSubscriber(c.appID, c.name, socketID)
+	}
 }
 
 // HasConnections returns true if at least one client is subscribed to this channel anywhere
@@ -300,6 +304,16 @@ func (c *presenceChannel) getUserCount() int64 {
 		// todo: log or handle
 	}
 	return count
+}
+
+func (c *presenceChannel) Close() {
+	c.publicChannel.Close()
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	for socketID := range c.localUserData {
+		c.eventManager.RemoveTrackedChannelUser(c.appID, c.name, socketID)
+	}
 }
 
 // Subscribe a connection to this channel
