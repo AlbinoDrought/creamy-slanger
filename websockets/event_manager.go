@@ -24,13 +24,17 @@ type Subscription interface {
 type EventManager interface {
 	Publish(appID, channel string, payload PubEvent) error
 	Subscribe(appID, channel string) Subscription
+
+	AddTrackedChannelSubscriber(appID, channel, subscriberID string) error
+	RemoveTrackedChannelSubscriber(appID, channel, subscriberID string) error
+	GetTrackedChannelSubscriberCount(appID, channel string) (int64, error)
 }
 
 type redisEventManager struct {
 	client *redis.Client
 }
 
-func (eventManager *redisEventManager) channelName(appID, channel string) string {
+func (eventManager *redisEventManager) pubsubKey(appID, channel string) string {
 	return appID + "\x00" + channel
 }
 
@@ -39,11 +43,11 @@ func (eventManager *redisEventManager) Publish(appID, channel string, payload Pu
 	if err != nil {
 		return err
 	}
-	return eventManager.client.Publish(eventManager.channelName(appID, channel), serialized).Err()
+	return eventManager.client.Publish(eventManager.pubsubKey(appID, channel), serialized).Err()
 }
 
 func (eventManager *redisEventManager) Subscribe(appID, channel string) Subscription {
-	subscription := eventManager.client.Subscribe(eventManager.channelName(appID, channel))
+	subscription := eventManager.client.Subscribe(eventManager.pubsubKey(appID, channel))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	messageChannel := make(chan PubEvent)
@@ -82,6 +86,22 @@ func (eventManager *redisEventManager) Subscribe(appID, channel string) Subscrip
 		channel:  messageChannel,
 		redisSub: subscription,
 	}
+}
+
+func (eventManager *redisEventManager) trackedChannelSubscriberKey(appID, channel string) string {
+	return "subs:" + eventManager.pubsubKey(appID, channel)
+}
+
+func (eventManager *redisEventManager) AddTrackedChannelSubscriber(appID, channel, subscriberID string) error {
+	return eventManager.client.SAdd(eventManager.trackedChannelSubscriberKey(appID, channel), subscriberID).Err()
+}
+
+func (eventManager *redisEventManager) RemoveTrackedChannelSubscriber(appID, channel, subscriberID string) error {
+	return eventManager.client.SRem(eventManager.trackedChannelSubscriberKey(appID, channel), subscriberID).Err()
+}
+
+func (eventManager *redisEventManager) GetTrackedChannelSubscriberCount(appID, channel string) (int64, error) {
+	return eventManager.client.SCard(eventManager.trackedChannelSubscriberKey(appID, channel)).Result()
 }
 
 type redisSubscription struct {

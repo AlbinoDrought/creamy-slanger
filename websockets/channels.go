@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/AlbinoDrought/creamy-slanger/websockets/support"
+	log "github.com/sirupsen/logrus"
 )
 
 // A Channel could be any type of event bus
@@ -17,7 +18,7 @@ type Channel interface {
 	HasConnections() bool
 	HasLocalConnections() bool
 	GetSubscribedConnections() []Connection
-	GetSubscriptionCount() int
+	GetSubscriptionCount() int64
 	Subscribe(con Connection, payload ClientMessagePayload) error
 	Unsubscribe(con Connection)
 	Broadcast(message MessagePayload)
@@ -103,9 +104,12 @@ func (c *publicChannel) GetSubscribedConnections() []Connection {
 }
 
 // GetSubscriptionCount returns the count of connections subscribed to this channel
-func (c *publicChannel) GetSubscriptionCount() int {
-	// todo: implement
-	return 0
+func (c *publicChannel) GetSubscriptionCount() int64 {
+	count, err := c.eventManager.GetTrackedChannelSubscriberCount(c.appID, c.name)
+	if err != nil {
+		// todo: log or handle
+	}
+	return count
 }
 
 func (c *publicChannel) verifySignature(con Connection, payload ClientMessagePayload) error {
@@ -134,6 +138,7 @@ func (c *publicChannel) saveConnection(con Connection) {
 	c.lock.Lock()
 	hadConnectionsPreviously := c.HasConnections()
 	c.localConnections[con.SocketID()] = con
+	c.eventManager.AddTrackedChannelSubscriber(c.appID, c.name, con.SocketID())
 	c.lock.Unlock()
 
 	// todo: implement
@@ -152,6 +157,12 @@ func (c *publicChannel) Subscribe(con Connection, payload ClientMessagePayload) 
 		"channel": c.name,
 	})
 
+	log.WithFields(log.Fields{
+		"appID":       c.appID,
+		"channel":     c.name,
+		"subscribers": c.GetSubscriptionCount(),
+	}).Debug("local channel sub")
+
 	return nil
 }
 
@@ -159,7 +170,14 @@ func (c *publicChannel) Subscribe(con Connection, payload ClientMessagePayload) 
 func (c *publicChannel) Unsubscribe(con Connection) {
 	c.lock.Lock()
 	delete(c.localConnections, con.SocketID())
+	c.eventManager.RemoveTrackedChannelSubscriber(c.appID, c.name, con.SocketID())
 	c.lock.Unlock()
+
+	log.WithFields(log.Fields{
+		"appID":       c.appID,
+		"channel":     c.name,
+		"subscribers": c.GetSubscriptionCount(),
+	}).Debug("local channel unsub")
 
 	// todo: implement
 	if !c.HasConnections() {
