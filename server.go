@@ -123,6 +123,13 @@ func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	if app == nil {
 		w.WriteHeader(404)
+		w.Write([]byte("App not found"))
+		return
+	}
+
+	if !requestVerified(app.Secret(), r.Method, r.URL.Path, r.URL.Query(), body) {
+		w.WriteHeader(401)
+		w.Write([]byte("Invalid auth signature provided."))
 		return
 	}
 
