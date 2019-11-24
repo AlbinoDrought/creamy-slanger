@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// A Handler handles websocket connections
 type Handler interface {
 	OnOpen(con Connection) error
 	OnMessage(con Connection, message ClientMessagePayload) error

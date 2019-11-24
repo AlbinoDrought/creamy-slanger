@@ -1,5 +1,6 @@
 package websockets
 
+// A WebsocketException is an Error that can (and should) be sent over WS to clients
 type WebsocketException interface {
 	error
 	GetPayload() MessagePayload
