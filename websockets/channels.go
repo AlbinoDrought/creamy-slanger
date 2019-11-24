@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"sync"
 
 	"github.com/AlbinoDrought/creamy-slanger/websockets/support"
@@ -121,13 +122,13 @@ func (c *publicChannel) verifySignature(con Connection, payload ClientMessagePay
 	}
 
 	auth := payload.Auth()
-	actualMAC := []byte(support.StrAfter(auth, ":"))
+	actualMAC := support.StrAfter(auth, ":")
 
 	mac := hmac.New(sha256.New, []byte(con.App().Secret()))
 	mac.Write([]byte(signature))
-	expectedMAC := mac.Sum(nil)
+	expectedMAC := hex.EncodeToString(mac.Sum(nil))
 
-	if !hmac.Equal(actualMAC, expectedMAC) {
+	if !hmac.Equal([]byte(actualMAC), []byte(expectedMAC)) {
 		return invalidSignatureException()
 	}
 

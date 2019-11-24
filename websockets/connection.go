@@ -49,7 +49,7 @@ func (cmp ClientMessagePayload) ChannelData() string {
 }
 
 func (cmp ClientMessagePayload) Auth() string {
-	return cmp.valueOrEmpty("auth")
+	return valueOrEmpty(cmp.Data(), "auth")
 }
 
 func (cmp ClientMessagePayload) MessagePayload() MessagePayload {
