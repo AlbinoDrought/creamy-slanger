@@ -21,18 +21,21 @@ var upgrader = websocket.Upgrader{
 }
 
 func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	appKey := p.ByName("appkey")
+	logger := log.WithField("appKey", appKey)
+
 	defer r.Body.Close()
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
-			log.Warnf("[server] err on ws upgrade: %+v", err)
+			logger.WithField("error", err).Warn("ws upgrade failed")
 		}
 		return
 	}
 	ws.SetReadLimit(512)
 	defer ws.Close()
 
-	con := newWebsocketConnection(ws, p.ByName("appkey"))
+	con := newWebsocketConnection(ws, appKey)
 	defer slangerOptions.Handler.OnClose(con)
 
 	err = slangerOptions.Handler.OnOpen(con)
@@ -40,6 +43,8 @@ func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		slangerOptions.Handler.OnError(con, err)
 		return
 	}
+
+	logger = logger.WithField("client", con.SocketID())
 
 	var (
 		messageType int
@@ -49,7 +54,7 @@ func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	for {
 		messageType, rawMessage, err = ws.ReadMessage()
 		if err != nil {
-			log.Debugf("[client %v] error on read: %+v", con.SocketID(), err)
+			logger.WithField("error", err).Debug("error on read")
 			break
 		}
 		if messageType == websocket.TextMessage {
@@ -57,17 +62,23 @@ func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 			err = json.Unmarshal(rawMessage, &message)
 
 			if err != nil {
-				log.Warnf("[client %v] error on unmarshal: %+v", con.SocketID(), err)
+				logger.WithField("error", err).Debug("error on unmarshal")
 				break
 			}
 
-			log.Debugf("[client %v] message received: %+v", con.SocketID(), message)
+			logger.WithField("msg", message).Debug("inbound")
 			if err = slangerOptions.Handler.OnMessage(con, message); err != nil {
-				log.Debugf("[client %v] message error: %v", con.SocketID(), err.Error())
+				logger.WithFields(log.Fields{
+					"msg":   message,
+					"error": err,
+				}).Debug("message error")
 				slangerOptions.Handler.OnError(con, err)
 			}
 		} else {
-			log.Warnf("[client %v] unhandled message type: %v, %v", con.SocketID(), messageType, rawMessage)
+			logger.WithFields(log.Fields{
+				"type": messageType,
+				"raw":  rawMessage,
+			}).Debug("unhandled message type")
 		}
 	}
 }
@@ -75,7 +86,7 @@ func serveWs(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 type IncomingEvent struct {
 	Name     string
 	Channels []string
-	Data     websockets.MessagePayload
+	Data     interface{}
 }
 
 func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -91,15 +102,36 @@ func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 
 	event := IncomingEvent{}
-	json.Unmarshal(body, &event)
+	messagePayload := websockets.MessagePayload{}
+	if err := json.Unmarshal(body, &event); err != nil {
+		log.WithFields(log.Fields{
+			"appID": appID,
+			"error": err,
+		}).Debug("createEvent json unmarshal failure")
+	}
+
+	if dataBytes, ok := event.Data.([]byte); ok {
+		if err := json.Unmarshal(dataBytes, messagePayload); err != nil {
+			log.WithFields(log.Fields{
+				"appID": appID,
+				"error": err,
+			}).Debug("createEvent dataBytes json unmarshal failure")
+		}
+	}
 
 	for _, channelName := range event.Channels {
-		log.Debugf("[channel %v] publishing %v %+v", channelName, event.Name, event.Data)
+		log.WithFields(log.Fields{
+			"appID":   appID,
+			"channel": channelName,
+			"event":   event.Name,
+			"message": event.Data,
+		}).Debugf("publishing")
+
 		slangerOptions.EventManager.Publish(
 			appID,
 			channelName,
 			websockets.PubEvent{
-				Payload: event.Data,
+				Payload: messagePayload,
 			},
 		)
 	}
@@ -111,6 +143,6 @@ func bootServer() {
 	router.POST("/apps/:appid/events", createEvent)
 
 	addr := options.WebsocketHost + ":" + options.WebsocketPort
-	log.Infof("[server] listening on %v", addr)
+	log.WithField("address", addr).Info("listening")
 	log.Fatal(http.ListenAndServe(addr, router))
 }
