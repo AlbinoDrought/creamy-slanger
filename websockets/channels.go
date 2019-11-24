@@ -127,13 +127,13 @@ func (c *publicChannel) verifySignature(con Connection, payload ClientMessagePay
 	}
 
 	auth := payload.Auth()
-	actualMAC := support.StrAfter(auth, ":")
+	suppliedMAC := support.StrAfter(auth, ":")
 
 	mac := hmac.New(sha256.New, []byte(con.App().Secret()))
 	mac.Write([]byte(signature))
-	expectedMAC := hex.EncodeToString(mac.Sum(nil))
+	computedMAC := hex.EncodeToString(mac.Sum(nil))
 
-	if !hmac.Equal([]byte(actualMAC), []byte(expectedMAC)) {
+	if !hmac.Equal([]byte(suppliedMAC), []byte(computedMAC)) {
 		return invalidSignatureException()
 	}
 
