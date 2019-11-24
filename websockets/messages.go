@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/AlbinoDrought/creamy-slanger/websockets/support"
+	log "github.com/sirupsen/logrus"
 )
 
 // A Message is anything that can be sent by a client connection
@@ -77,6 +78,8 @@ func (m *ChannelProtocolMessage) Respond() error {
 		return m.subscribe()
 	case "unsubscribe":
 		return m.unsubscribe()
+	default:
+		log.Debugf("[client %v] unhandled protocol message: %v", m.con.SocketID(), eventName)
 	}
 
 	return nil
