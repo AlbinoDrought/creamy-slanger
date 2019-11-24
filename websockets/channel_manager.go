@@ -94,6 +94,7 @@ func (channelManager *arrayChannelManager) FindOrCreate(appID, channelName strin
 				channel = NewPublicChannel(appID, channelName, channelManager.eventManager)
 			}
 
+			channel.Open()
 			channels.channels[channelName] = channel
 		}
 
