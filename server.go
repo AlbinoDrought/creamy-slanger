@@ -110,13 +110,6 @@ func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		}).Debug("createEvent json unmarshal failure")
 	}
 
-	if err := json.Unmarshal([]byte(event.Data), &messagePayload); err != nil {
-		log.WithFields(log.Fields{
-			"appID": appID,
-			"error": err,
-		}).Debug("createEvent dataBytes json unmarshal failure")
-	}
-
 	for _, channelName := range event.Channels {
 		log.WithFields(log.Fields{
 			"appID":   appID,
@@ -129,7 +122,11 @@ func createEvent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			appID,
 			channelName,
 			websockets.PubEvent{
-				Payload: messagePayload,
+				Payload: map[string]interface{}{
+					"channel": channelName,
+					"event":   event.Name,
+					"data":    event.Data,
+				},
 			},
 		)
 	}
