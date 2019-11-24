@@ -4,11 +4,19 @@ import (
 	"os"
 	"strings"
 
+	"github.com/AlbinoDrought/creamy-slanger/websockets"
 	"github.com/spf13/viper"
 
 	"github.com/go-redis/redis"
 	log "github.com/sirupsen/logrus"
 )
+
+type SlangerOptions struct {
+	AppManager     websockets.AppManager
+	ChannelManager websockets.ChannelManager
+	EventManager   websockets.EventManager
+	Handler        websockets.Handler
+}
 
 type Options struct {
 	AppKey          string
@@ -20,8 +28,9 @@ type Options struct {
 }
 
 var (
-	options Options
-	daddy   *redis.Client
+	slangerOptions SlangerOptions
+	options        Options
+	daddy          *redis.Client
 )
 
 func main() {
@@ -58,14 +67,29 @@ func main() {
 		ActivityTimeout: viper.GetInt("websocket.timeout"),
 	}
 
+	daddy = redis.NewClient(options.RedisOptions)
+	slangerOptions = SlangerOptions{
+		AppManager: websockets.NewArrayAppManager([]websockets.App{
+			&websockets.StaticApp{
+				AppID:                    "6969",
+				AppKey:                   "somekey",
+				AppSecret:                "somesecret",
+				AppCapacityEnabled:       false,
+				AppCapacity:              0,
+				AppClientMessagesEnabled: false,
+			},
+		}),
+		EventManager: websockets.NewRedisEventManager(daddy),
+	}
+	slangerOptions.ChannelManager = websockets.NewArrayChannelManager(slangerOptions.EventManager)
+	slangerOptions.Handler = websockets.NewHandler(slangerOptions.AppManager, slangerOptions.ChannelManager)
+
 	log.SetOutput(os.Stdout)
 	if options.Debug {
 		log.SetLevel(log.DebugLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
-
-	daddy = redis.NewClient(options.RedisOptions)
 
 	// test redis connection
 	pubsub := daddy.Subscribe("creamy-slanger")

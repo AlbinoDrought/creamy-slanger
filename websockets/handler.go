@@ -7,7 +7,7 @@ import (
 
 type Handler interface {
 	OnOpen(con Connection) error
-	OnMessage(con Connection, message ClientMessagePayload)
+	OnMessage(con Connection, message ClientMessagePayload) error
 	OnClose(con Connection)
 	OnError(con Connection, err error)
 }
@@ -18,9 +18,7 @@ type websocketHandler struct {
 }
 
 func (h *websocketHandler) verifyAppKey(con Connection) error {
-	// todo: implement
-	// get AppKey from query
-	appKey := "pancakes"
+	appKey := con.AppKey()
 
 	app := h.appManager.FindByKey(appKey)
 	if app == nil {
@@ -105,5 +103,13 @@ func (h *websocketHandler) OnClose(con Connection) {
 func (h *websocketHandler) OnError(con Connection, err error) {
 	if websocketException, ok := err.(WebsocketException); ok {
 		con.Send(websocketException.GetPayload())
+	}
+}
+
+// NewHandler returns a new handler for websocket connections
+func NewHandler(appManager AppManager, channelManager ChannelManager) Handler {
+	return &websocketHandler{
+		appManager,
+		channelManager,
 	}
 }

@@ -42,6 +42,8 @@ type Connection interface {
 	App() App
 	SetApp(app App)
 
+	AppKey() string
+
 	SocketID() string
 	SetSocketID(socketID string)
 
