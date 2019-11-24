@@ -43,9 +43,11 @@ func (con *websocketConnection) Send(message websockets.MessagePayload) {
 	defer con.messageLock.Unlock()
 
 	log.WithFields(log.Fields{
-		"client": con.SocketID(),
+		"appKey": con.appKey,
+		"client": con.socketID,
 		"msg":    message,
 	}).Debug("outbound")
+
 	con.ws.WriteJSON(message)
 }
 
