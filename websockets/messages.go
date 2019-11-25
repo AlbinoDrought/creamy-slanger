@@ -46,9 +46,11 @@ type ChannelProtocolMessage struct {
 	payload        ClientMessagePayload
 	con            Connection
 	channelManager ChannelManager
+	eventManager   EventManager
 }
 
 func (m *ChannelProtocolMessage) ping() error {
+	m.eventManager.KeepSubscriber(m.con.App().ID(), m.con.SocketID())
 	m.con.Send(map[string]interface{}{
 		"event": "pusher:pong",
 	})
@@ -89,7 +91,7 @@ func (m *ChannelProtocolMessage) Respond() error {
 }
 
 // CreateForMessage converts any arbitrary ClientMessagePayload into an actionable Message
-func CreateForMessage(con Connection, payload ClientMessagePayload, channelManager ChannelManager) Message {
+func CreateForMessage(con Connection, payload ClientMessagePayload, channelManager ChannelManager, eventManager EventManager) Message {
 	// stray: assumes message already decoded
 
 	if strings.HasPrefix(payload.Event(), "pusher:") {
@@ -97,6 +99,7 @@ func CreateForMessage(con Connection, payload ClientMessagePayload, channelManag
 			payload,
 			con,
 			channelManager,
+			eventManager,
 		}
 	}
 

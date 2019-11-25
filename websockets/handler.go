@@ -18,6 +18,7 @@ type Handler interface {
 type websocketHandler struct {
 	appManager     AppManager
 	channelManager ChannelManager
+	eventManager   EventManager
 }
 
 func (h *websocketHandler) verifyAppKey(con Connection) error {
@@ -86,7 +87,7 @@ func (h *websocketHandler) OnOpen(con Connection) error {
 }
 
 func (h *websocketHandler) OnMessage(con Connection, payload ClientMessagePayload) error {
-	message := CreateForMessage(con, payload, h.channelManager)
+	message := CreateForMessage(con, payload, h.channelManager, h.eventManager)
 
 	if err := message.Respond(); err != nil {
 		return err
@@ -113,9 +114,10 @@ func (h *websocketHandler) OnError(con Connection, err error) {
 }
 
 // NewHandler returns a new handler for websocket connections
-func NewHandler(appManager AppManager, channelManager ChannelManager) Handler {
+func NewHandler(appManager AppManager, channelManager ChannelManager, eventManager EventManager) Handler {
 	return &websocketHandler{
 		appManager,
 		channelManager,
+		eventManager,
 	}
 }
