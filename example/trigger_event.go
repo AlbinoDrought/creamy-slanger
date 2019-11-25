@@ -10,8 +10,8 @@ func main() {
 	client := pusher.Client{
 		AppID:   "42",
 		Host:    "localhost:8080",
-		Key:     "somekey",
-		Secret:  "somesecret",
+		Key:     "foo",
+		Secret:  "bar",
 		Cluster: "rms",
 		Secure:  false,
 	}

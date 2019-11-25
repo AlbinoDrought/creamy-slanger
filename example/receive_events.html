@@ -7,7 +7,7 @@
     // Enable pusher logging - don't include this in production
     Pusher.logToConsole = true;
 
-    var pusher = new Pusher('somekey', {
+    var pusher = new Pusher('foo', {
       cluster: 'rms',
       wsHost: 'localhost',
       wsPort: 8080,
@@ -17,11 +17,9 @@
     });
 
     var channel = pusher.subscribe('my-channel');
-    setTimeout(function () {
-      pusher.unsubscribe('my-channel');
-    }, 1500);
+
     channel.bind('my-event', function(data) {
-      alert(JSON.stringify(data));
+      document.getElementById('output').innerText += JSON.stringify(data) + '\n';
     });
   </script>
 </head>
@@ -31,5 +29,7 @@
     Try publishing an event to channel <code>my-channel</code>
     with event name <code>my-event</code>.
   </p>
+
+  <code id="output"></code>
 </body>
 
