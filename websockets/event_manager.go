@@ -3,6 +3,8 @@ package websockets
 import (
 	"context"
 	"encoding/json"
+	"strings"
+	"time"
 
 	"github.com/go-redis/redis"
 	log "github.com/sirupsen/logrus"
@@ -33,6 +35,10 @@ type EventManager interface {
 	RemoveTrackedChannelUser(appID, channel, subscriberID string) error
 	GetTrackedChannelUsers(appID, channel string) ([]string, error)
 	GetTrackedChannelUserCount(appID, channel string) (int64, error)
+
+	KeepSubscriber(appID, subscriberID string) error
+	SweepSubscriber(subscriberID string) error
+	SweepExpired() (uint64, error)
 }
 
 type redisEventManager struct {
@@ -40,7 +46,7 @@ type redisEventManager struct {
 }
 
 func (eventManager *redisEventManager) pubsubKey(appID, channel string) string {
-	return appID + "_" + channel
+	return appID + "_ " + channel
 }
 
 func (eventManager *redisEventManager) Publish(appID, channel string, payload PubEvent) error {
@@ -98,10 +104,14 @@ func (eventManager *redisEventManager) trackedChannelSubscriberKey(appID, channe
 }
 
 func (eventManager *redisEventManager) AddTrackedChannelSubscriber(appID, channel, subscriberID string) error {
+	eventManager.client.SAdd("sub:"+subscriberID+"_subs", appID+":"+channel)
+
 	return eventManager.client.SAdd(eventManager.trackedChannelSubscriberKey(appID, channel), subscriberID).Err()
 }
 
 func (eventManager *redisEventManager) RemoveTrackedChannelSubscriber(appID, channel, subscriberID string) error {
+	eventManager.client.SRem("sub:"+subscriberID+"_subs", appID+":"+channel)
+
 	return eventManager.client.SRem(eventManager.trackedChannelSubscriberKey(appID, channel), subscriberID).Err()
 }
 
@@ -110,14 +120,18 @@ func (eventManager *redisEventManager) GetTrackedChannelSubscriberCount(appID, c
 }
 
 func (eventManager *redisEventManager) trackedChannelUserKey(appID, channel string) string {
-	return "subs:" + eventManager.pubsubKey(appID, channel)
+	return "users:" + eventManager.pubsubKey(appID, channel)
 }
 
 func (eventManager *redisEventManager) AddTrackedChannelUser(appID, channel, subscriberID, userData string) error {
+	eventManager.client.SAdd("sub:"+subscriberID+"_users", appID+":"+channel)
+
 	return eventManager.client.HSet(eventManager.trackedChannelUserKey(appID, channel), subscriberID, userData).Err()
 }
 
 func (eventManager *redisEventManager) RemoveTrackedChannelUser(appID, channel, subscriberID string) error {
+	eventManager.client.SRem("sub:"+subscriberID+"_users", appID+":"+channel)
+
 	return eventManager.client.HDel(eventManager.trackedChannelUserKey(appID, channel), subscriberID).Err()
 }
 
@@ -127,6 +141,70 @@ func (eventManager *redisEventManager) GetTrackedChannelUsers(appID, channel str
 
 func (eventManager *redisEventManager) GetTrackedChannelUserCount(appID, channel string) (int64, error) {
 	return eventManager.client.HLen(eventManager.trackedChannelUserKey(appID, channel)).Result()
+}
+
+func (eventManager *redisEventManager) KeepSubscriber(appID, subscriberID string) error {
+	eventManager.client.SAdd("subs", subscriberID)
+
+	return eventManager.client.Set("sub:"+subscriberID+"_alive", true, time.Hour).Err()
+}
+
+func (eventManager *redisEventManager) SweepSubscriber(subscriberID string) error {
+	subscriptions := eventManager.client.SMembers("sub:" + subscriberID + "_subs").Val()
+	for _, subscription := range subscriptions {
+		index := strings.Index(subscription, ":")
+		if index != -1 {
+			appID := subscription[:index]
+			channel := subscription[index+1:]
+
+			eventManager.RemoveTrackedChannelSubscriber(appID, channel, subscriberID)
+		}
+		eventManager.client.SRem("sub:"+subscriberID+"_subs", subscription)
+	}
+
+	users := eventManager.client.SMembers("sub:" + subscriberID + "_users").Val()
+	for _, user := range users {
+		index := strings.Index(user, ":")
+		if index != -1 {
+			appID := user[:index]
+			channel := user[index+1:]
+
+			eventManager.RemoveTrackedChannelUser(appID, channel, subscriberID)
+		}
+		eventManager.client.SRem("sub:"+subscriberID+"_users", user)
+	}
+
+	eventManager.client.Del("sub:" + subscriberID + "_alive")
+	return eventManager.client.SRem("subs", subscriberID).Err()
+}
+
+func (eventManager *redisEventManager) SweepExpired() (uint64, error) {
+	var (
+		subscribers []string
+		cursor      uint64
+		err         error
+		sweeped     uint64
+	)
+
+	for {
+		subscribers, cursor, err = eventManager.client.SScan("subs", cursor, "", 0).Result()
+		if err != nil {
+			return sweeped, err
+		}
+
+		for _, subscriber := range subscribers {
+			if eventManager.client.Exists("sub:"+subscriber+"_alive").Val() <= 0 {
+				eventManager.SweepSubscriber(subscriber)
+				sweeped++
+			}
+		}
+
+		if cursor <= 0 {
+			break
+		}
+	}
+
+	return sweeped, nil
 }
 
 type redisSubscription struct {
