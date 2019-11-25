@@ -171,6 +171,14 @@ func bootServer() {
 	wsContext, wsCancel := context.WithCancel(context.Background())
 	websocketContext = wsContext
 
+	sweeper := sync.WaitGroup{}
+
+	go func() {
+		sweeper.Add(1)
+		sweepEvery(wsContext, time.Minute*10)
+		sweeper.Done()
+	}()
+
 	router := httprouter.New()
 	router.GET("/app/:appkey", serveWs)
 	router.POST("/apps/:appid/events", createEvent)
@@ -192,12 +200,16 @@ func bootServer() {
 	<-stop
 	shutdownContext, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
+	stopped = true
 	server.Shutdown(shutdownContext)
 	wsCancel()
 
 	wsDrain := make(chan struct{}, 1)
 	go func() {
 		websocketWaitGroup.Wait()
+		log.Debug("websockets drained")
+		sweeper.Wait()
+		log.Debug("sweeper finished")
 		wsDrain <- struct{}{}
 	}()
 
