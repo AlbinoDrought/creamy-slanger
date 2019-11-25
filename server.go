@@ -176,11 +176,16 @@ func bootServer() {
 	router.POST("/apps/:appid/events", createEvent)
 
 	server := &http.Server{Addr: options.WebsocketHost + ":" + options.WebsocketPort, Handler: router}
+	stopped := false
 
 	go func() {
 		log.WithField("address", server.Addr).Info("listening")
 		if err := server.ListenAndServe(); err != nil {
-			log.Warn(err)
+			if stopped {
+				log.Warn(err)
+			} else {
+				log.Fatal(err)
+			}
 		}
 	}()
 
