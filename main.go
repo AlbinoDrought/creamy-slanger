@@ -87,7 +87,7 @@ func main() {
 		EventManager: websockets.NewRedisEventManager(daddy),
 	}
 	slangerOptions.ChannelManager = websockets.NewArrayChannelManager(slangerOptions.EventManager)
-	slangerOptions.Handler = websockets.NewHandler(slangerOptions.AppManager, slangerOptions.ChannelManager)
+	slangerOptions.Handler = websockets.NewHandler(slangerOptions.AppManager, slangerOptions.ChannelManager, slangerOptions.EventManager)
 
 	log.SetOutput(os.Stdout)
 	if options.Debug {
