@@ -1,12 +1,21 @@
 {
   "debug": true,
   "app": {
-    "key": "foo"
+    "id": "42",
+    "key": "foo",
+    "secret": "bar",
+    "capacity": {
+      "enabled": false,
+      "max": 0
+    },
+    "clientmessages": {
+      "enabled": false
+    },
+    "timeout": 120
   },
   "websocket": {
     "host": "0.0.0.0",
-    "port": "8080",
-    "timeout": 120
+    "port": "8080"
   },
   "redis": {
     "address": "0.0.0.0:6379",

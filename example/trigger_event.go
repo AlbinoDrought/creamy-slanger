@@ -8,15 +8,15 @@ import (
 
 func main() {
 	client := pusher.Client{
-		AppId:   "6969",
+		AppID:   "42",
 		Host:    "localhost:8080",
-		Key:     "somekey",
-		Secret:  "somesecret",
+		Key:     "foo",
+		Secret:  "bar",
 		Cluster: "rms",
 		Secure:  false,
 	}
 
 	data := map[string]string{"message": "hello world"}
-	_, err := client.Trigger("my-channel", "my-event", data)
+	err := client.Trigger("my-channel", "my-event", data)
 	fmt.Printf("%+v", err)
 }

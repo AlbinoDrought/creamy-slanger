@@ -1,34 +1,52 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"strings"
 
+	"github.com/AlbinoDrought/creamy-slanger/websockets"
+	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
 
 	"github.com/go-redis/redis"
 	log "github.com/sirupsen/logrus"
 )
 
+type SlangerOptions struct {
+	AppManager     websockets.AppManager
+	ChannelManager websockets.ChannelManager
+	EventManager   websockets.EventManager
+	Handler        websockets.Handler
+}
+
 type Options struct {
-	AppKey          string
-	WebsocketHost   string
-	WebsocketPort   string
-	Debug           bool
-	RedisOptions    *redis.Options
-	ActivityTimeout int
+	WebsocketHost            string
+	WebsocketPort            string
+	WebsocketReadBufferSize  int
+	WebsocketWriteBufferSize int
+	Debug                    bool
+	RedisOptions             *redis.Options
 }
 
 var (
-	options Options
-	daddy   *redis.Client
+	slangerOptions SlangerOptions
+	options        Options
+	daddy          *redis.Client
 )
 
-func main() {
+func init() {
+	viper.SetDefault("app.id", "42")
 	viper.SetDefault("app.key", "foo")
+	viper.SetDefault("app.secret", "bar")
+	viper.SetDefault("app.capacity.enabled", false)
+	viper.SetDefault("app.capacity.max", 0)
+	viper.SetDefault("app.clientmessages.enabled", false)
+	viper.SetDefault("app.activitytimeout", 120)
 	viper.SetDefault("websocket.host", "0.0.0.0")
 	viper.SetDefault("websocket.port", "8080")
-	viper.SetDefault("websocket.timeout", 120)
+	viper.SetDefault("websocket.read_buffer_size", 1024)
+	viper.SetDefault("websocket.write_buffer_size", 1024)
 	viper.SetDefault("debug", false)
 	viper.SetDefault("redis.address", "0.0.0.0:6379")
 	viper.SetDefault("redis.password", "")
@@ -38,6 +56,9 @@ func main() {
 	viper.SetEnvPrefix("CREAMY_SLANGER")
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
+}
+
+func main() {
 	err := viper.ReadInConfig()
 	if err == nil {
 		log.Info("[server] loaded config from file")
@@ -46,17 +67,43 @@ func main() {
 	}
 
 	options = Options{
-		AppKey:        viper.GetString("app.key"),
-		WebsocketHost: viper.GetString("websocket.host"),
-		WebsocketPort: viper.GetString("websocket.port"),
-		Debug:         viper.GetBool("debug"),
+		WebsocketHost:            viper.GetString("websocket.host"),
+		WebsocketPort:            viper.GetString("websocket.port"),
+		WebsocketReadBufferSize:  viper.GetInt("websocket.read_buffer_size"),
+		WebsocketWriteBufferSize: viper.GetInt("websocket.write_buffer_size"),
+		Debug:                    viper.GetBool("debug"),
 		RedisOptions: &redis.Options{
 			Addr:     viper.GetString("redis.address"),
 			Password: viper.GetString("redis.password"),
 			DB:       viper.GetInt("redis.database"),
 		},
-		ActivityTimeout: viper.GetInt("websocket.timeout"),
 	}
+
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:  options.WebsocketReadBufferSize,
+		WriteBufferSize: options.WebsocketWriteBufferSize,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	daddy = redis.NewClient(options.RedisOptions)
+	slangerOptions = SlangerOptions{
+		AppManager: websockets.NewArrayAppManager([]websockets.App{
+			&websockets.StaticApp{
+				AppID:                    viper.GetString("app.id"),
+				AppKey:                   viper.GetString("app.key"),
+				AppSecret:                viper.GetString("app.secret"),
+				AppCapacityEnabled:       viper.GetBool("app.capacity.enabled"),
+				AppCapacity:              viper.GetInt("app.capacity.max"),
+				AppClientMessagesEnabled: viper.GetBool("app.clientmessages.enabled"),
+				AppActivityTimeout:       viper.GetInt("app.activitytimeout"),
+			},
+		}),
+		EventManager: websockets.NewRedisEventManager(daddy),
+	}
+	slangerOptions.ChannelManager = websockets.NewArrayChannelManager(slangerOptions.EventManager)
+	slangerOptions.Handler = websockets.NewHandler(slangerOptions.AppManager, slangerOptions.ChannelManager, slangerOptions.EventManager)
 
 	log.SetOutput(os.Stdout)
 	if options.Debug {
@@ -64,8 +111,6 @@ func main() {
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
-
-	daddy = redis.NewClient(options.RedisOptions)
 
 	// test redis connection
 	pubsub := daddy.Subscribe("creamy-slanger")
